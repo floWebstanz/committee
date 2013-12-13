@@ -18,21 +18,28 @@ class CRM_Committee_Form_Search_CommitteeMember extends CRM_Contact_Form_Search_
     CRM_Utils_System::setTitle(ts('Members of the committee'));
 
     $form->add('text',
-      'household_id',
+      'committee_id',
       ts('Committee ID'),
+      TRUE
+    );
+
+    $form->add('text',
+      'relationship_type',
+      ts('Relationship types'),
       TRUE
     );
 
     // Optionally define default search values
     $form->setDefaults(array(
-      'household_id' => '',
+      'committee_id' => '818',
+      'relationship_type' => '5,6,7,8,18',
     ));
 
     /**
      * if you are using the standard template, this array tells the template what elements
      * are part of the search criteria
      */
-    $form->assign('elements', array('household_id'));
+    $form->assign('elements', array('committee_id','relationship_type'));
   }
 
   /**
@@ -59,7 +66,9 @@ class CRM_Committee_Form_Search_CommitteeMember extends CRM_Contact_Form_Search_
     // return by reference
     $columns = array(
       ts('Contact Id') => 'contact_id',
-      ts('Contact Type') => 'contact_type'
+      ts('email') => 'email',
+      ts('Name') => 'sort_name',
+      ts('Organisation') => 'organization_name'
     );
     return $columns;
   }
@@ -81,10 +90,10 @@ class CRM_Committee_Form_Search_CommitteeMember extends CRM_Contact_Form_Search_
    */
   function select() {
     return "
-      contact_a.id           as contact_id  ,
-      contact_a.contact_type as contact_type,
-      contact_a.sort_name    as sort_name,
-      state_province.name    as state_province
+DISTINCT contact_a.id as contact_id,  
+civicrm_email.email,   
+contact_a.sort_name,
+contact_a.organization_name 
     ";
   }
 
@@ -94,13 +103,11 @@ class CRM_Committee_Form_Search_CommitteeMember extends CRM_Contact_Form_Search_
    * @return string, sql fragment with FROM and JOIN clauses
    */
   function from() {
-    return "
-      FROM      civicrm_contact contact_a
-      LEFT JOIN civicrm_address address ON ( address.contact_id       = contact_a.id AND
-                                             address.is_primary       = 1 )
-      LEFT JOIN civicrm_email           ON ( civicrm_email.contact_id = contact_a.id AND
-                                             civicrm_email.is_primary = 1 )
-      LEFT JOIN civicrm_state_province state_province ON state_province.id = address.state_province_id
+    return "FROM 
+civicrm_contact contact_a 
+Inner Join   civicrm_relationship On contact_a.id = civicrm_relationship.contact_id_a   
+Inner Join   civicrm_email On contact_a.id = civicrm_email.contact_id 
+Inner Join   civicrm_contact contact_b On contact_b.id = civicrm_relationship.contact_id_b
     ";
   }
 
@@ -111,39 +118,15 @@ class CRM_Committee_Form_Search_CommitteeMember extends CRM_Contact_Form_Search_
    */
   function where($includeContactIDs = FALSE) {
     $params = array();
-    $where = "contact_a.contact_type   = 'Household'";
+    $where = "
+civicrm_relationship.relationship_type_id in (%2) AND
+contact_b.id = %1 AND civicrm_relationship.is_active = 1 AND contact_a.is_deleted = 0";
 
     $count  = 1;
-    $clause = array();
-    $name   = CRM_Utils_Array::value('household_name',
-      $this->_formValues
-    );
-    if ($name != NULL) {
-      if (strpos($name, '%') === FALSE) {
-        $name = "%{$name}%";
-      }
-      $params[$count] = array($name, 'String');
-      $clause[] = "contact_a.household_name LIKE %{$count}";
-      $count++;
-    }
-
-    $state = CRM_Utils_Array::value('state_province_id',
-      $this->_formValues
-    );
-    if (!$state &&
-      $this->_stateID
-    ) {
-      $state = $this->_stateID;
-    }
-
-    if ($state) {
-      $params[$count] = array($state, 'Integer');
-      $clause[] = "state_province.id = %{$count}";
-    }
-
-    if (!empty($clause)) {
-      $where .= ' AND ' . implode(' AND ', $clause);
-    }
+    $committee_id   = CRM_Utils_Array::value('committee_id',$this->_formValues);
+    $relationship   = CRM_Utils_Array::value('relationship_type',$this->_formValues);
+    $params[1] = array($committee_id, 'Integer');
+    $params[2] = array($relationship, 'String');
 
     return $this->whereClause($where, $params);
   }
@@ -164,6 +147,6 @@ class CRM_Committee_Form_Search_CommitteeMember extends CRM_Contact_Form_Search_
    * @return void
    */
   function alterRow(&$row) {
-    $row['sort_name'] .= ' ( altered )';
+//    $row['sort_name'] .= ' ( altered )';
   }
 }
