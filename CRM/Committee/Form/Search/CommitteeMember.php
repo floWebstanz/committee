@@ -17,6 +17,8 @@ class CRM_Committee_Form_Search_CommitteeMember extends CRM_Contact_Form_Search_
   function buildForm(&$form) {
     CRM_Utils_System::setTitle(ts('Members of the committee'));
 
+/* definition du formulaire */
+
     $form->add('text',
       'committee_id',
       ts('Committee ID'),
@@ -34,6 +36,7 @@ class CRM_Committee_Form_Search_CommitteeMember extends CRM_Contact_Form_Search_
       'committee_id' => '818',
       'relationship_type' => '5,6,7,8,18',
     ));
+/* fin de la definition du form */
 
     /**
      * if you are using the standard template, this array tells the template what elements
@@ -118,16 +121,20 @@ Inner Join   civicrm_contact contact_b On contact_b.id = civicrm_relationship.co
    */
   function where($includeContactIDs = FALSE) {
     $params = array();
+    $relationship   = CRM_Utils_Array::value('relationship_type',$this->_formValues);
+    if (strpos($relationship, ';', true) !== false) {
+      die ("invalid param");
+    }
     $where = "
-civicrm_relationship.relationship_type_id in (%2) AND
+civicrm_relationship.relationship_type_id in ($relationship) AND
 contact_b.id = %1 AND civicrm_relationship.is_active = 1 AND contact_a.is_deleted = 0";
 
     $count  = 1;
     $committee_id   = CRM_Utils_Array::value('committee_id',$this->_formValues);
-    $relationship   = CRM_Utils_Array::value('relationship_type',$this->_formValues);
-    $params[1] = array($committee_id, 'Integer');
-    $params[2] = array($relationship, 'String');
 
+    $params[1] = array($committee_id, 'Integer');
+
+die ($this->whereClause($where, $params));
     return $this->whereClause($where, $params);
   }
 
