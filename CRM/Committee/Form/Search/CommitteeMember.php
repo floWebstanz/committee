@@ -134,7 +134,6 @@ contact_b.id = %1 AND civicrm_relationship.is_active = 1 AND contact_a.is_delete
 
     $params[1] = array($committee_id, 'Integer');
 
-die ($this->whereClause($where, $params));
     return $this->whereClause($where, $params);
   }
 
